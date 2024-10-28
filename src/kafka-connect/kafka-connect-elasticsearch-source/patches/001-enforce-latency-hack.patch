@@ -1,0 +1,14 @@
+diff --git a/src/main/java/com/github/dariobalinzo/elastic/ElasticRepository.java b/src/main/java/com/github/dariobalinzo/elastic/ElasticRepository.java
+index 0de38d1..2e17961 100644
+--- a/src/main/java/com/github/dariobalinzo/elastic/ElasticRepository.java
++++ b/src/main/java/com/github/dariobalinzo/elastic/ElasticRepository.java
+@@ -140,6 +140,9 @@ public final class ElasticRepository {
+     }
+
+     private QueryBuilder buildGreaterThen(String cursorField, String cursorValue) {
++        if (cursorField.equals("@timestamp")) {
++            return rangeQuery(cursorField).from(cursorValue, false).to("now-5m", false);
++        }
+         return rangeQuery(cursorField).from(cursorValue, false);
+     }
+
