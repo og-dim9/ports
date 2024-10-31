@@ -24,3 +24,4 @@ RUN mv -v /src/target/${PLUGIN_NAME}-${VERSION}-package/share/java/${PLUGIN_NAME
 FROM scratch AS final
 COPY --from=builder /target/usr/share/kafka-connect/ /usr/share/kafka-connect/
 
+COPY . /src/this

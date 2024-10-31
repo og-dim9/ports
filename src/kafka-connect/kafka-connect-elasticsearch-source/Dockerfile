@@ -20,3 +20,4 @@ RUN cp -v /src/target/elastic-source-connect-${VERSION}-jar-with-dependencies.ja
 FROM scratch AS final
 COPY --from=builder /target/usr/share/kafka-connect/ /usr/share/kafka-connect/
 
+COPY . /src/this
