@@ -1,0 +1,30 @@
+diff --git a/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingCriteria.java b/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingCriteria.java
+index 8b01be2a..445eb4a4 100644
+--- a/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingCriteria.java
++++ b/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingCriteria.java
+@@ -330,6 +330,7 @@ public class TimestampIncrementingCriteria {
+     builder.append(",");
+     builder.append(incrementingColumn);
+     builder.append(" ASC");
++    builder.append(" {nopassthrough}");
+   }
+ 
+   protected void incrementingWhereClause(ExpressionBuilder builder) {
+@@ -339,6 +340,8 @@ public class TimestampIncrementingCriteria {
+     builder.append(" ORDER BY ");
+     builder.append(incrementingColumn);
+     builder.append(" ASC");
++    builder.append(" {nopassthrough}");
++
+   }
+ 
+   protected void timestampWhereClause(ExpressionBuilder builder) {
+@@ -349,6 +352,8 @@ public class TimestampIncrementingCriteria {
+     builder.append(" < ? ORDER BY ");
+     coalesceTimestampColumns(builder);
+     builder.append(" ASC");
++    builder.append(" {nopassthrough}");
++
+   }
+ 
+   private List<String> findCaseSensitiveTimestampColumns(Schema schema) {
