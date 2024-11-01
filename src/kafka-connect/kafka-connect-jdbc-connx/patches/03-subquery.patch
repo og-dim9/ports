@@ -1,15 +1,12 @@
 diff --git a/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingTableQuerier.java b/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingTableQuerier.java
-index 014ff920..96590c6e 100644
+index 014ff920..dd13dd35 100644
 --- a/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingTableQuerier.java
 +++ b/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingTableQuerier.java
-@@ -143,7 +143,9 @@ public class TimestampIncrementingTableQuerier extends TableQuerier implements C
-         builder.append(tableId);
-         break;
-       case QUERY:
--        builder.append(query);
-+        builder.append("SELECT * FROM (");
-+        builder.append(query);
-+        builder.append(")"); 
-         break;
-       default:
-         throw new ConnectException("Unknown mode encountered when preparing query: " + mode);
+@@ -156,6 +156,7 @@ public class TimestampIncrementingTableQuerier extends TableQuerier implements C
+     addSuffixIfPresent(builder);
+     
+     String queryString = builder.toString();
++    queryString = "SELECT * FROM ( " + queryString + " )"
+     recordQuery(queryString);
+     log.trace("{} prepared SQL query: {}", this, queryString);
+     stmt = dialect.createPreparedStatement(db, queryString);
