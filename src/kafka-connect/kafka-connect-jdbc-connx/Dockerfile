@@ -5,12 +5,13 @@ ARG PLUGIN_PROVIDER=confluentinc
 RUN git clone https://github.com/confluentinc/kafka-connect-jdbc -b v${VERSION} /src
 WORKDIR /src
 
-RUN mvn dependency:resolve
+# cache dependancies
+RUN mvn verify clean --fail-never
 
 COPY ./patches/ /patches/
 RUN git apply /patches/*.patch --verbose
 
-RUN mvn clean package -DskipTests -Denforcer.fail=false
+RUN mvn package -DskipTests -Denforcer.fail=false
 
 RUN mkdir -pv /target/usr/share/java/lib/
 RUN cp -v /src/target/${PLUGIN_NAME}-${VERSION}.jar \
