@@ -6,7 +6,7 @@ ARG PLUGIN_PROVIDER=dariobalinzo
 RUN git clone https://github.com/${PLUGIN_PROVIDER}/${PLUGIN_NAME} -b v.${VERSION} /src
 WORKDIR /src
 
-RUN mvn dependency:resolve
+RUN mvn verify clean --fail-never
 
 COPY ./patches/ /patches/
 RUN git apply /patches/*.patch --verbose

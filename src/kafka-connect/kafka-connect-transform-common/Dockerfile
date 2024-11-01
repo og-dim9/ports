@@ -6,7 +6,9 @@ ARG PLUGIN_PROVIDER=jcustenborder
 RUN git clone https://github.com/${PLUGIN_PROVIDER}/${PLUGIN_NAME} -b ${VERSION} /src
 WORKDIR /src
 
-RUN mvn clean package -DskipTests -Denforcer.fail=false
+RUN mvn verify clean --fail-never
+
+RUN mvn package -DskipTests -Denforcer.fail=false
 
 RUN mkdir -pv  /target/usr/share/kafka-connect
 
