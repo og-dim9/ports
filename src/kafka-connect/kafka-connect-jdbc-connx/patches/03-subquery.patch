@@ -1,13 +1,15 @@
-diff --git a/src/main/java/io/confluent/connect/jdbc/source/BulkTableQuerier.java b/src/main/java/io/confluent/connect/jdbc/source/BulkTableQuerier.java
-index 2f2d0613..4d7cd082 100644
---- a/src/main/java/io/confluent/connect/jdbc/source/BulkTableQuerier.java
-+++ b/src/main/java/io/confluent/connect/jdbc/source/BulkTableQuerier.java
-@@ -58,7 +58,7 @@ public class BulkTableQuerier extends TableQuerier {
- 
+diff --git a/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingTableQuerier.java b/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingTableQuerier.java
+index 014ff920..96590c6e 100644
+--- a/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingTableQuerier.java
++++ b/src/main/java/io/confluent/connect/jdbc/source/TimestampIncrementingTableQuerier.java
+@@ -143,7 +143,9 @@ public class TimestampIncrementingTableQuerier extends TableQuerier implements C
+         builder.append(tableId);
          break;
        case QUERY:
--        builder.append(query);  
-+        builder.append("SELECT * FROM (").append(query).append(")");  
-         
+-        builder.append(query);
++        builder.append("SELECT * FROM (");
++        builder.append(query);
++        builder.append(")"); 
          break;
        default:
+         throw new ConnectException("Unknown mode encountered when preparing query: " + mode);
