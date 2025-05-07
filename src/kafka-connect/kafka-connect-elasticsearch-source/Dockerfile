@@ -1,4 +1,4 @@
-FROM maven:3.3-jdk-8 AS builder
+FROM registry.hub.docker.com/library/maven:3.3-jdk-8 AS builder
 ARG VERSION=1.5.5
 ARG PLUGIN_NAME=kafka-connect-elasticsearch-source
 ARG PLUGIN_PROVIDER=dariobalinzo
@@ -10,7 +10,7 @@ RUN mvn verify clean --fail-never
 
 COPY ./patches/ /patches/
 RUN git apply /patches/*.patch --verbose
-RUN mvn clean package -DskipTests -Denforcer.fail=false
+RUN mvn package -DskipTests -Denforcer.fail=false
 
 RUN mkdir -pv  /target/usr/share/kafka-connect/${PLUGIN_NAME}
 
