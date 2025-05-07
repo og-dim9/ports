@@ -10,3 +10,9 @@ build:
 push:
 	echo "Pushing  $(OCI_REPO):$(PORT_NAME)_$(VERSION)"
 	@$(OCI_RUNTIME) push $(OCI_REPO):$(PORT_NAME)_$(VERSION)
+
+src:
+	@git clone https://github.com/dariobalinzo/kafka-connect-elasticsearch-source -b v.$(VERSION) src
+
+clean:
+	@rm -rfv src

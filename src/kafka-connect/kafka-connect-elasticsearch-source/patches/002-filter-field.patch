@@ -1,0 +1,159 @@
+diff --git a/src/main/java/com/github/dariobalinzo/ElasticSourceConnectorConfig.java b/src/main/java/com/github/dariobalinzo/ElasticSourceConnectorConfig.java
+index 1e1f9d3..46f5593 100644
+--- a/src/main/java/com/github/dariobalinzo/ElasticSourceConnectorConfig.java
++++ b/src/main/java/com/github/dariobalinzo/ElasticSourceConnectorConfig.java
+@@ -105,6 +105,19 @@ public class ElasticSourceConnectorConfig extends AbstractConfig {
+                     " in order to avoid data losses when paginating";
+     private static final String SECONDARY_INCREMENTING_FIELD_NAME_DISPLAY = "Secondary Incrementing Field Name";
+ 
++    public static final String FILTER_FIELD_NAME_CONFIG = "filter.field.name";
++    private static final String FILTER_FIELD_NAME_DOC =
++            "filter fieldname used when search criteria when polling data from ES";
++    private static final String FILTER_FIELD_NAME_DISPLAY = "the field name used to filter the ES data";
++    private static final String FILTER_FIELD_NAME_DEFAULT = "";
++
++    public static final String FILTER_FIELD_VALUE_CONFIG = "filter.field.value";
++    private static final String FILTER_FIELD_VALUE_DOC =
++            "filter field name used when search criteria when polling data from ES";
++    private static final String FILTER_FIELD_VALUE_DISPLAY = "the string used to filter the ES data";
++    private static final String FILTER_FIELD_VALUE_DEFAULT = "";
++ 
++
+     public static final String INDEX_PREFIX_CONFIG = "index.prefix";
+     private static final String INDEX_PREFIX_DOC = "List of indices to include in copying.";
+     private static final String INDEX_PREFIX_DEFAULT = "";
+@@ -367,6 +380,26 @@ public class ElasticSourceConnectorConfig extends AbstractConfig {
+                 ++orderInGroup,
+                 Width.MEDIUM,
+                 SECONDARY_INCREMENTING_FIELD_NAME_DISPLAY
++        ).define(
++                FILTER_FIELD_NAME_CONFIG,
++                Type.STRING,
++                FILTER_FIELD_NAME_DEFAULT,
++                Importance.LOW,
++                FILTER_FIELD_NAME_DOC,
++                MODE_GROUP,
++                ++orderInGroup,
++                Width.MEDIUM,
++                FILTER_FIELD_NAME_DISPLAY
++        ).define(
++                FILTER_FIELD_VALUE_CONFIG,
++                Type.STRING,
++                FILTER_FIELD_VALUE_DEFAULT,
++                Importance.LOW,
++                FILTER_FIELD_VALUE_DOC,
++                MODE_GROUP,
++                ++orderInGroup,
++                Width.MEDIUM,
++                FILTER_FIELD_VALUE_DISPLAY
+         );
+     }
+ 
+diff --git a/src/main/java/com/github/dariobalinzo/elastic/ElasticRepository.java b/src/main/java/com/github/dariobalinzo/elastic/ElasticRepository.java
+index 88fc29b..23328d8 100644
+--- a/src/main/java/com/github/dariobalinzo/elastic/ElasticRepository.java
++++ b/src/main/java/com/github/dariobalinzo/elastic/ElasticRepository.java
+@@ -48,6 +48,10 @@ public final class ElasticRepository {
+     private final String secondaryCursorField;
+     private final String secondaryCursorFieldJsonName;
+ 
++    private final String filterField;
++    private final String filterFieldJsonName;
++    private final String filterValue;
++
+     private int pageSize = 5000;
+ 
+     public ElasticRepository(ElasticConnection elasticConnection) {
+@@ -56,22 +60,21 @@ public final class ElasticRepository {
+         this.cursorFieldJsonName = this.cursorField;
+         this.secondaryCursorField = null;
+         this.secondaryCursorFieldJsonName = null;
++        this.filterField = null;
++        this.filterFieldJsonName = null;
++        this.filterValue = null;
+     }
+ 
+-    public ElasticRepository(ElasticConnection elasticConnection, String cursorField) {
+-        this.elasticConnection = elasticConnection;
+-        this.cursorField = cursorField;
+-        this.cursorFieldJsonName = cursorField.replace(".keyword", "");
+-        this.secondaryCursorField = null;
+-        this.secondaryCursorFieldJsonName = null;
+-    }
+-
+-    public ElasticRepository(ElasticConnection elasticConnection, String cursorField, String secondaryCursorField) {
++    public ElasticRepository(ElasticConnection elasticConnection, String cursorField, String secondaryCursorField, String filterField, String filterValue) {
+         this.elasticConnection = elasticConnection;
+         this.cursorField = cursorField;
+         this.cursorFieldJsonName = removeKeywordSuffix(cursorField);
+         this.secondaryCursorField = secondaryCursorField;
+         this.secondaryCursorFieldJsonName = removeKeywordSuffix(secondaryCursorField);
++
++        this.filterField = filterField;
++        this.filterFieldJsonName = filterField.replace(".keyword", "");
++        this.filterValue = filterValue;
+     }
+ 
+     public PageResult searchAfter(String index, Cursor cursor) throws IOException, InterruptedException {
+@@ -152,8 +155,26 @@ public final class ElasticRepository {
+ 
+     private QueryBuilder getSecondarySortFieldQuery(String primaryCursor, String secondaryCursor) {
+         if (secondaryCursor == null) {
++            if (filterField != null) {
++                return boolQuery()
++                        .filter(buildGreaterThen(cursorField, primaryCursor))
++                        .filter(matchQuery(filterFieldJsonName, filterValue));
++            }
+             return buildGreaterThen(cursorField, primaryCursor);
+         }
++
++        if (filterField != null) {
++            return boolQuery()
++                        .minimumShouldMatch(1)
++                        .should(boolQuery()
++                                .filter(buildGreaterThen(cursorField, primaryCursor))
++                                .filter(matchQuery(filterFieldJsonName, filterValue)))
++                        .should(
++                                boolQuery()
++                                        .filter(matchQuery(cursorField, primaryCursor))
++                                        .filter(buildGreaterThen(secondaryCursorField, secondaryCursor))
++                        );
++        }
+         return boolQuery()
+                 .minimumShouldMatch(1)
+                 .should(buildGreaterThen(cursorField, primaryCursor))
+diff --git a/src/main/java/com/github/dariobalinzo/task/ElasticSourceTask.java b/src/main/java/com/github/dariobalinzo/task/ElasticSourceTask.java
+index 7e65a71..8a8d688 100644
+--- a/src/main/java/com/github/dariobalinzo/task/ElasticSourceTask.java
++++ b/src/main/java/com/github/dariobalinzo/task/ElasticSourceTask.java
+@@ -64,6 +64,9 @@ public class ElasticSourceTask extends SourceTask {
+     private String cursorFieldJsonName;
+     private String secondaryCursorField;
+     private String secondaryCursorFieldJsonName;
++    private String filterField;
++    private String filterFieldJsonName;
++    private String filterValue;
+     private int pollingMs;
+     private final Map<String, Cursor> lastCursor = new HashMap<>();
+     private final Map<String, Integer> sent = new HashMap<>();
+@@ -97,6 +100,11 @@ public class ElasticSourceTask extends SourceTask {
+         cursorFieldJsonName = removeKeywordSuffix(cursorField);
+         secondaryCursorField = config.getString(ElasticSourceConnectorConfig.SECONDARY_INCREMENTING_FIELD_NAME_CONFIG);
+         secondaryCursorFieldJsonName = removeKeywordSuffix(secondaryCursorField);
++
++        filterField = config.getString(ElasticSourceConnectorConfig.FILTER_FIELD_NAME_CONFIG);
++        filterFieldJsonName = removeKeywordSuffix(filterField);
++        filterValue = config.getString(ElasticSourceConnectorConfig.FILTER_FIELD_VALUE_CONFIG);
++
+         pollingMs = Integer.parseInt(config.getString(ElasticSourceConnectorConfig.POLL_INTERVAL_MS_CONFIG));
+ 
+         initConnectorFilters();
+@@ -186,7 +194,7 @@ public class ElasticSourceTask extends SourceTask {
+                     .build();
+         }
+ 
+-        elasticRepository = new ElasticRepository(es, cursorField, secondaryCursorField);
++        elasticRepository = new ElasticRepository(es, cursorField, secondaryCursorField, filterField, filterValue);
+         elasticRepository.setPageSize(batchSize);
+     }
+ 
